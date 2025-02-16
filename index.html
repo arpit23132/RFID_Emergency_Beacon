@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RFID Tracking System</title>
+    <style>
+        /* General Styling */
+        body {
+            font-family: 'Arial', sans-serif;
+            background-color: #f4f4f9;
+            text-align: center;
+            padding: 20px;
+            margin: 0;
+        }
+
+        h1 {
+            color: #333;
+            font-size: 28px;
+            margin-bottom: 20px;
+        }
+
+        /* Table Styling */
+        .table-container {
+            width: 90%;
+            margin: auto;
+            overflow-x: auto;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+            background: white;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        th, td {
+            padding: 12px;
+            text-align: center;
+            border-bottom: 1px solid #ddd;
+        }
+
+        th {
+            background: #007bff;
+            color: white;
+            font-size: 16px;
+        }
+
+        tr:nth-child(even) {
+            background: #f9f9f9;
+        }
+
+        tr:hover {
+            background: #f1f1f1;
+        }
+
+        /* Button Styling */
+        .resolve-btn {
+            background-color: #ff4d4d;
+            color: white;
+            padding: 8px 12px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: 0.3s;
+        }
+
+        .resolve-btn:hover {
+            background-color: #cc0000;
+        }
+
+        .resolved {
+            background-color: green !important;
+            cursor: not-allowed;
+        }
+
+        .reset-btn {
+            background-color: #ff9800;
+            color: white;
+            padding: 10px 15px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            margin-top: 20px;
+            font-size: 16px;
+            transition: 0.3s;
+        }
+
+        .reset-btn:hover {
+            background-color: #e68900;
+        }
+
+        /* Responsive Design */
+        @media screen and (max-width: 768px) {
+            th, td {
+                font-size: 14px;
+                padding: 10px;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <h1>RFID Emergency Beacon</h1>
+
+    <div class="table-container">
+        <table id="dataTable">
+            <thead>
+                <tr>
+                    <th>Date and Time</th>
+                    <th>Name</th>
+                    <th>Address</th>
+                    <th>Phone</th>
+                    <th>Gender</th>
+                    <th>Disabled</th>
+                    <th>User ID</th>
+                    <th>Location</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody></tbody>
+        </table>
+    </div>
+
+    <button class="reset-btn" onclick="resetResolvedList()">Reset Resolved List</button>
+
+    <script>
+        const API_URL = "https://script.google.com/macros/s/AKfycbxdIAv_JQm-sKvQ_RbA_liPaBVfvPxxYMQ7NOArJFvCkZ9Co4eecPuHHObGxI3Fjdqh/exec"; // Replace with your Google Apps Script URL
+        let lastData = [];
+        let resolvedRows = JSON.parse(localStorage.getItem("resolvedRows")) || {}; // Load resolved rows from local storage
+
+        async function fetchDataLoop() {
+            while (true) {
+                try {
+                    const response = await fetch(API_URL);
+                    const data = await response.json();
+
+                    if (JSON.stringify(data) !== JSON.stringify(lastData)) {
+                        lastData = data;
+                        populateTable(data);
+                    }
+                } catch (error) {
+                    console.error("Error fetching data:", error);
+                }
+                await new Promise(resolve => setTimeout(resolve, 1000)); // Wait 1 second before fetching again
+            }
+        }
+
+        function populateTable(data) {
+            const tableBody = document.querySelector("#dataTable tbody");
+            tableBody.innerHTML = "";
+
+            data.slice(1).forEach((row, index) => { // Skip headers
+                let tr = document.createElement("tr");
+
+                row.forEach(cell => {  // iterates through the data of the row, creating a cell and adding the data
+                    let td = document.createElement("td");
+                    td.textContent = cell;
+                    tr.appendChild(td);
+                });
+
+                let actionTd = document.createElement("td");
+                let resolveButton = document.createElement("button");
+                resolveButton.textContent = resolvedRows[index] ? "Resolved" : "Resolve";
+                resolveButton.className = resolvedRows[index] ? "resolve-btn resolved" : "resolve-btn";
+                resolveButton.disabled = resolvedRows[index] ? true : false;
+                resolveButton.onclick = () => markResolved(resolveButton, index);
+                actionTd.appendChild(resolveButton);
+                tr.appendChild(actionTd);
+
+                tableBody.appendChild(tr);
+            });
+        }
+
+        function markResolved(button, index) {
+            button.textContent = "Resolved";
+            button.classList.add("resolved");
+            button.disabled = true;
+            resolvedRows[index] = true;
+            localStorage.setItem("resolvedRows", JSON.stringify(resolvedRows)); // Save state persistently
+        }
+
+        function resetResolvedList() {
+            resolvedRows = {}; // Clear resolved rows
+            localStorage.removeItem("resolvedRows"); // Remove from local storage
+            populateTable(lastData); // Refresh table
+        }
+
+        fetchDataLoop(); // Start continuous fetching
+    </script>
+</body>
+</html>
